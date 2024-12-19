@@ -18,7 +18,7 @@
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
     "@vitejs/plugin-legacy": "^6.0.0",
-    "concurrently": "^8.0.0",
+    "concurrently": "^9.1.0",
     "esbuild": "^0.19.0",
     "eslint": "^8.0.0",
     "http-server": "^14.0.0",
