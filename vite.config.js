@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import legacy from '@vitejs/plugin-legacy';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export default defineConfig({
   plugins: [
     legacy({
@@ -17,9 +19,9 @@ export default defineConfig({
     },
   },
   server: {
-    host: '0.0.0.0',
+    host: isDev ? '0.0.0.0' : 'localhost', // Listen on all interfaces in dev, localhost in prod
     port: 3000,
-    strictPort: true,
+    strictPort: true, // Ensure the server fails if the port is already in use
     hmr: {
       clientPort: 3000
     }

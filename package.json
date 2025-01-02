@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "browser": "dist/client.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "NODE_ENV=development vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "jest",
