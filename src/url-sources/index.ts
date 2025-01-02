@@ -13,5 +13,11 @@ export interface URLSourceOptions {
 }
 
 export interface URLSource {
-  getUrls(baseUrl: string): Promise<string[]>;
+  getUrls(
+    baseUrl: string, 
+    onProgress?: (message: string) => void
+  ): Promise<{ 
+    urls: string[]; 
+    sitemaps: Array<{ url: string; urlCount: number }> 
+  }>;
 } 

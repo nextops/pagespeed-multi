@@ -58,4 +58,11 @@ export interface BatchResponse {
     failedRequests: number;
     averagePerformanceScore: number;
   };
+}
+
+export interface ProgressCallback {
+  onStart?: (total: number) => void;
+  onProgress?: (current: number, total: number) => void;
+  onSitemapProgress?: (message: string) => void;
+  onDiscoveryComplete?: (sitemaps: Array<{ url: string; urlCount: number }>) => void;
 } 
