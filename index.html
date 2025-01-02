@@ -33,6 +33,23 @@
             color: #666;
             font-style: italic;
         }
+
+        .summary {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .sub-metric {
+            margin: 5px 0 5px 20px;
+            font-size: 0.9em;
+        }
+
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
     </style>
 </head>
 
@@ -40,15 +57,17 @@
     <div class="config-form">
         <label>API Key: <input type="text" id="apiKey"></label>
         <label>URL to test: <input type="text" id="testUrl" value="https://example.com"></label>
+        <label><input type="checkbox" id="useSitemap"> Process all URLs in sitemap</label>
         <button id="analyzeBtn">Analyze</button>
     </div>
     <div id="results"></div>
 
-    <script type="module" src="/src/client.ts"></script>
+    <script type="module" src="/src/main.ts"></script>
     <script>
-        document.getElementById('analyzeBtn').addEventListener('click', function () {
-            var apiKey = document.getElementById('apiKey').value;
-            var testUrl = document.getElementById('testUrl').value;
+        document.getElementById('analyzeBtn').addEventListener('click', async function () {
+            const apiKey = document.getElementById('apiKey').value;
+            const testUrl = document.getElementById('testUrl').value;
+            const useSitemap = document.getElementById('useSitemap').checked;
 
             if (!window.PageSpeed) {
                 document.getElementById('results').innerHTML =
@@ -56,8 +75,70 @@
                 return;
             }
 
-            PageSpeed.analyze(testUrl, apiKey)
-                .then(function (result) {
+            try {
+                if (useSitemap) {
+                    const batchRequest = {
+                        urls: [],
+                        apiKey,
+                        urlSource: {
+                            method: 'sitemap',
+                            baseUrl: testUrl
+                        }
+                    };
+                    const results = await PageSpeed.analyzeBatch(batchRequest);
+                    
+                    let html = '<h2>Batch Analysis Results</h2>';
+                    
+                    // Summary section
+                    html += `<div class="summary">
+                        <h3>Summary</h3>
+                        <p>Total URLs: ${results.summary.totalUrls}</p>
+                        <p>Successful: ${results.summary.successfulRequests}</p>
+                        <p>Failed: ${results.summary.failedRequests}</p>
+                        <p>Average Performance Score: ${Math.round(results.summary.averagePerformanceScore * 100)}%</p>
+                    </div>`;
+
+                    // Individual results
+                    html += '<h3>Individual Results</h3>';
+                    results.results.forEach(({ url, response, error }) => {
+                        html += `<div class="metric">
+                            <h4>${url}</h4>`;
+                        
+                        if (error) {
+                            html += `<div class="error">Error: ${error}</div>`;
+                        } else if (response) {
+                            const score = response.lighthouseResult?.categories?.performance?.score ?? 0;
+                            html += `<div>Performance Score: ${Math.round(score * 100)}%</div>`;
+
+                            // Lab Data
+                            if (response.lighthouseResult?.audits) {
+                                const labMetrics = [
+                                    'first-contentful-paint',
+                                    'speed-index',
+                                    'largest-contentful-paint',
+                                    'interactive',
+                                    'total-blocking-time',
+                                    'cumulative-layout-shift'
+                                ];
+
+                                labMetrics.forEach(metricKey => {
+                                    const audit = response.lighthouseResult.audits[metricKey];
+                                    if (audit) {
+                                        html += `<div class="sub-metric">
+                                            <span class="metric-label">${audit.title}:</span>
+                                            <span>${audit.displayValue}</span>
+                                        </div>`;
+                                    }
+                                });
+                            }
+                        }
+                        
+                        html += '</div>';
+                    });
+
+                    document.getElementById('results').innerHTML = html;
+                } else {
+                    const result = await PageSpeed.analyze(testUrl, apiKey);
                     console.log('Raw field data:', result.raw.loadingExperience);
                     console.log('Raw lighthouse data:', result.raw.lighthouseResult);
 
@@ -105,11 +186,11 @@
                     }
 
                     document.getElementById('results').innerHTML = html;
-                })
-                .catch(function (error) {
-                    document.getElementById('results').innerHTML =
-                        '<div class="error">' + error.message + '</div>';
-                });
+                }
+            } catch (error) {
+                document.getElementById('results').innerHTML =
+                    '<div class="error">' + error.message + '</div>';
+            }
         });
     </script>
 </body>
