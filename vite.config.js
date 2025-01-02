@@ -14,14 +14,18 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
-        client: 'src/client.ts',
+        api: 'src/api/client.ts',
+        services: [
+          'src/services/page-speed.ts',
+          'src/services/batch.ts'
+        ]
       },
     },
   },
   server: {
-    host: isDev ? '0.0.0.0' : 'localhost', // Listen on all interfaces in dev, localhost in prod
+    host: isDev ? '0.0.0.0' : 'localhost',
     port: 3000,
-    strictPort: true, // Ensure the server fails if the port is already in use
+    strictPort: true,
     hmr: {
       clientPort: 3000
     }
