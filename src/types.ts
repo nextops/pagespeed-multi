@@ -26,11 +26,28 @@ export interface PageSpeedResponse {
   };
 }
 
+export enum URLSourceMethod {
+  SITEMAP = 'sitemap',
+  GOOGLE_CACHE = 'googleCache' // Placeholder for future implementation
+}
+
+export interface URLSourceOptions {
+  method: URLSourceMethod;
+  baseUrl: string;
+  // Add specific options for each method if needed
+  sitemapOptions?: {
+    paths?: string[]; // Optional override for default sitemap paths
+  };
+  // Placeholder for future Google Cache options
+  googleCacheOptions?: Record<string, never>;
+}
+
 export interface BatchPageSpeedRequest {
   urls: string[];
   apiKey: string;
   concurrency?: number; // Number of concurrent requests
   delayBetweenRequests?: number; // Delay in ms between requests
+  urlSource?: URLSourceOptions; // Optional to allow direct URL array input
 }
 
 export interface BatchPageSpeedResponse {
