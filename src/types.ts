@@ -26,6 +26,27 @@ export interface PageSpeedResponse {
   };
 }
 
+export interface BatchPageSpeedRequest {
+  urls: string[];
+  apiKey: string;
+  concurrency?: number; // Number of concurrent requests
+  delayBetweenRequests?: number; // Delay in ms between requests
+}
+
+export interface BatchPageSpeedResponse {
+  results: {
+    url: string;
+    response?: PageSpeedResponse;  // Make response optional
+    error?: string;
+  }[];
+  summary: {
+    totalUrls: number;
+    successfulRequests: number;
+    failedRequests: number;
+    averagePerformanceScore: number;
+  };
+}
+
 export interface PageSpeedResult {
   raw: PageSpeedResponse;
   getPerformanceScore(): number;
