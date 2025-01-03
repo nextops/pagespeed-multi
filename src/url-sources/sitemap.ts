@@ -46,62 +46,59 @@ export class SitemapURLSource implements URLSource {
       onProgress?.(message);
     };
 
-    logProgress('🔍 Checking for sitemaps...');
-    const robotsSitemaps = await RobotsParser.getSitemapUrls(baseUrl);
-    
-    if (robotsSitemaps.length > 0) {
-      logProgress(`📋 Found ${robotsSitemaps.length} sitemaps in robots.txt`);
-    }
-
-    // Combine robots.txt sitemaps with default paths
-    const pathsToTry = [...robotsSitemaps];
-    if (pathsToTry.length === 0) {
-      for (const path of this.paths) {
-        pathsToTry.push(new URL(path, baseUrl).toString());
-      }
-    }
-
     const allUrls: Set<string> = new Set();
     const sitemaps: Array<{ url: string; urlCount: number }> = [];
+    let fetchError: Error | null = null;
 
-    for (const sitemapUrl of pathsToTry) {
-      logProgress(`📁 Checking ${sitemapUrl}`);
+    logProgress('🔍 Checking for sitemaps...');
+    
+    try {
+      const robotsSitemaps = await RobotsParser.getSitemapUrls(baseUrl);
       
-      const xml = await XMLParser.fetch(sitemapUrl);
-      if (!xml) continue;
+      // Combine robots.txt sitemaps with default paths
+      const pathsToTry = [
+        ...robotsSitemaps,
+        ...this.paths.map(path => new URL(path, baseUrl).toString())
+      ];
 
-      const sitemapUrls = XMLParser.extractSitemapUrls(xml, onProgress);
-      if (sitemapUrls.length > 0) {
-        onProgress?.(`📚 Found sitemap index with ${sitemapUrls.length} sitemaps`);
+      // Try all possible sitemap locations
+      for (const sitemapUrl of pathsToTry) {
+        logProgress(`📁 Checking ${sitemapUrl}`);
         
-        for (const [index, url] of sitemapUrls.entries()) {
-          onProgress?.(`📄 Loading sitemap ${index + 1}/${sitemapUrls.length}: ${url}`);
-          const subXml = await XMLParser.fetch(url, onProgress);
-          if (subXml) {
-            const pageUrls = XMLParser.extractPageUrls(subXml, onProgress);
-            sitemaps.push({ url, urlCount: pageUrls.length });
-            onProgress?.(`✅ Found ${pageUrls.length} URLs in sitemap ${index + 1}`);
-            pageUrls.forEach(url => allUrls.add(url));
+        try {
+          const xml = await XMLParser.fetch(sitemapUrl, onProgress);
+          if (xml) {
+            const pageUrls = XMLParser.extractPageUrls(xml);
+            if (pageUrls.length > 0) {
+              sitemaps.push({ url: sitemapUrl, urlCount: pageUrls.length });
+              logProgress(`✅ Found ${pageUrls.length} URLs in ${sitemapUrl}`);
+              pageUrls.forEach(url => allUrls.add(url));
+              break;
+            }
           }
-        }
-      } else {
-        const pageUrls = XMLParser.extractPageUrls(xml, onProgress);
-        if (pageUrls.length > 0) {
-          sitemaps.push({ url: sitemapUrl, urlCount: pageUrls.length });
-          onProgress?.(`✅ Found ${pageUrls.length} URLs in sitemap`);
-          pageUrls.forEach(url => allUrls.add(url));
+        } catch (error) {
+          // Log and store the error
+          if (error instanceof Error) {
+            fetchError = error;
+            logProgress(`⚠️ ${error.message}`);
+          }
         }
       }
 
-      if (allUrls.size > 0) break;
+      if (allUrls.size === 0) {
+        if (fetchError) {
+          throw fetchError;
+        }
+        throw new Error('No URLs found in any sitemap');
+      }
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logProgress(`❌ Sitemap discovery failed: ${errorMessage}`);
+      throw error;
     }
 
-    if (allUrls.size === 0) {
-      onProgress?.('❌ No valid URLs found in any sitemap');
-      throw new Error('No valid sitemap found');
-    }
-
-    onProgress?.(`🎉 Discovery complete! Found ${allUrls.size} unique URLs across ${sitemaps.length} sitemaps`);
+    logProgress(`🎉 Discovery complete! Found ${allUrls.size} unique URLs across ${sitemaps.length} sitemaps`);
     return { urls: Array.from(allUrls), sitemaps };
   }
 } 
