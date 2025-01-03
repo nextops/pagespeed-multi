@@ -1,5 +1,6 @@
 import { XMLParser } from '../utils/xml';
 import { URLSource } from './index';
+import { RobotsParser } from '../utils/robots-parser';
 
 export class SitemapURLSource implements URLSource {
   private static readonly DEFAULT_PATHS = [
@@ -40,21 +41,33 @@ export class SitemapURLSource implements URLSource {
     urls: string[]; 
     sitemaps: Array<{ url: string; urlCount: number }> 
   }> {
-    console.log('SitemapURLSource: Starting getUrls with progress callback:', !!onProgress);
-    
-    const allUrls: Set<string> = new Set();
-    const sitemaps: Array<{ url: string; urlCount: number }> = [];
-    
     const logProgress = (message: string): void => {
       console.log('SitemapURLSource:', message);
       onProgress?.(message);
     };
-    
-    logProgress('🔍 Starting sitemap discovery...');
 
-    for (const path of this.paths) {
-      const sitemapUrl = new URL(path, baseUrl).toString();
-      const xml = await XMLParser.fetch(sitemapUrl, onProgress);
+    logProgress('🔍 Checking for sitemaps...');
+    const robotsSitemaps = await RobotsParser.getSitemapUrls(baseUrl);
+    
+    if (robotsSitemaps.length > 0) {
+      logProgress(`📋 Found ${robotsSitemaps.length} sitemaps in robots.txt`);
+    }
+
+    // Combine robots.txt sitemaps with default paths
+    const pathsToTry = [...robotsSitemaps];
+    if (pathsToTry.length === 0) {
+      for (const path of this.paths) {
+        pathsToTry.push(new URL(path, baseUrl).toString());
+      }
+    }
+
+    const allUrls: Set<string> = new Set();
+    const sitemaps: Array<{ url: string; urlCount: number }> = [];
+
+    for (const sitemapUrl of pathsToTry) {
+      logProgress(`📁 Checking ${sitemapUrl}`);
+      
+      const xml = await XMLParser.fetch(sitemapUrl);
       if (!xml) continue;
 
       const sitemapUrls = XMLParser.extractSitemapUrls(xml, onProgress);
