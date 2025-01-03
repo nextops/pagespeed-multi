@@ -1,4 +1,4 @@
-import { PageSpeedResponse, PageSpeedResult } from './types';
+import { PageSpeedResponse, PageSpeedResult } from '../types';
 
 interface Metric {
   name: string;
@@ -10,18 +10,17 @@ export class PageSpeedService implements PageSpeedResult {
   constructor(public raw: PageSpeedResponse) {}
 
   getPerformanceScore(): number {
-    const categories = this.raw.lighthouseResult && this.raw.lighthouseResult.categories;
-    const performance = categories && categories.performance;
-    return (performance && performance.score) || 0;
+    const categories = this.raw.lighthouseResult?.categories;
+    const performance = categories?.performance;
+    return performance?.score ?? 0;
   }
 
   getLoadingMetrics(): Metric[] {
     const metrics: Metric[] = [];
-    const loadingMetrics = this.raw.loadingExperience && this.raw.loadingExperience.metrics;
+    const loadingMetrics = this.raw.loadingExperience?.metrics;
     
     if (loadingMetrics) {
-      Object.keys(loadingMetrics).forEach(name => {
-        const data = loadingMetrics[name];
+      Object.entries(loadingMetrics).forEach(([name, data]) => {
         metrics.push({
           name,
           value: data.percentile.toString(),
@@ -31,4 +30,4 @@ export class PageSpeedService implements PageSpeedResult {
     }
     return metrics;
   }
-}
+} 

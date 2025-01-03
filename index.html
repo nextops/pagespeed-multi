@@ -33,6 +33,155 @@
             color: #666;
             font-style: italic;
         }
+
+        .summary {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .sub-metric {
+            margin: 5px 0 5px 20px;
+            font-size: 0.9em;
+        }
+
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+
+        .progress-container {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .progress-log {
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+            background: #fff;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .progress-log-entry {
+            margin: 2px 0;
+            padding: 2px 5px;
+        }
+
+        .progress-log-entry.info { color: #0066cc; }
+        .progress-log-entry.success { color: #008800; }
+        .progress-log-entry.warning { color: #cc6600; }
+        .progress-log-entry.error { color: #cc0000; }
+
+        .progress-stats {
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background: #4CAF50;
+            width: 0;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .progress-text {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .discovery-summary {
+            margin: 10px 0;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+        }
+
+        .sitemap-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .total-urls {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .processing-estimate {
+            margin: 10px 0;
+            color: #666;
+        }
+
+        .results-summary {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .results-details {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .result-item.error {
+            border-color: #ffcdd2;
+            background: #ffebee;
+        }
+
+        .error-message {
+            color: #c62828;
+        }
+
+        .score {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        .metrics {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .metric-name {
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-family: monospace;
+        }
+
+        .metric-value.good { color: #2e7d32; }
+        .metric-value.average { color: #f57c00; }
+        .metric-value.poor { color: #c62828; }
     </style>
 </head>
 
@@ -40,15 +189,33 @@
     <div class="config-form">
         <label>API Key: <input type="text" id="apiKey"></label>
         <label>URL to test: <input type="text" id="testUrl" value="https://example.com"></label>
+        <label><input type="checkbox" id="useSitemap"> Process all URLs in sitemap</label>
         <button id="analyzeBtn">Analyze</button>
     </div>
+    <div id="progress" class="progress-container"></div>
     <div id="results"></div>
 
-    <script type="module" src="/src/client.ts"></script>
+    <script type="module" src="/src/main.ts"></script>
     <script>
-        document.getElementById('analyzeBtn').addEventListener('click', function () {
-            var apiKey = document.getElementById('apiKey').value;
-            var testUrl = document.getElementById('testUrl').value;
+        function logProgress(message, type = 'info') {
+            console.log('Progress:', message);
+            const progressDiv = document.getElementById('progress');
+            const log = progressDiv?.querySelector('.progress-log');
+            if (!log) {
+                console.error('Progress log element not found!');
+                return;
+            }
+            const entry = document.createElement('div');
+            entry.className = `progress-log-entry ${type}`;
+            entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        document.getElementById('analyzeBtn').addEventListener('click', async function () {
+            const apiKey = document.getElementById('apiKey').value;
+            const testUrl = document.getElementById('testUrl').value;
+            const useSitemap = document.getElementById('useSitemap').checked;
 
             if (!window.PageSpeed) {
                 document.getElementById('results').innerHTML =
@@ -56,60 +223,145 @@
                 return;
             }
 
-            PageSpeed.analyze(testUrl, apiKey)
-                .then(function (result) {
-                    console.log('Raw field data:', result.raw.loadingExperience);
-                    console.log('Raw lighthouse data:', result.raw.lighthouseResult);
+            try {
+                if (useSitemap) {
+                    console.log('Debug: Setting up progress div');  // Debug
+                    const progressDiv = document.getElementById('progress');
+                    progressDiv.style.display = 'block';
+                    progressDiv.innerHTML = `
+                        <div class="progress-log"></div>
+                        <div class="progress-stats">
+                            <span class="concurrency">Concurrent requests: 3</span>
+                            <span class="delay">Delay between batches: 1000ms</span>
+                        </div>
+                        <div class="progress-bar"></div>
+                        <div class="progress-status"></div>
+                    `;
 
-                    var html = '';
+                    console.log('Debug: Creating batch request');  // Debug
+                    const batchRequest = {
+                        urls: [],
+                        apiKey,
+                        concurrency: 3,
+                        delayBetweenRequests: 1000,
+                        urlSource: {
+                            method: 'sitemap',
+                            baseUrl: testUrl
+                        }
+                    };
 
-                    // Overall scores
-                    var performanceScore = result.getPerformanceScore();
-                    html += '<h2>Performance Score: ' + Math.round(performanceScore * 100) + '%</h2>';
+                    const callbacks = {  // Create callbacks object separately for debugging
+                        onStart: (total) => {
+                            console.log('Debug: onStart called:', total);
+                            logProgress(`Starting analysis of ${total} URLs`);
+                        },
+                        onProgress: (current, total) => {
+                            console.log('Debug: onProgress called:', current, total);
+                            const percent = (current / total) * 100;
+                            progressDiv.querySelector('.progress-bar').style.width = `${percent}%`;
+                            progressDiv.querySelector('.progress-status').textContent = 
+                                `Processed ${current} of ${total} URLs`;
+                            logProgress(`Progress: ${current}/${total} URLs processed`);
+                        },
+                        onSitemapProgress: (message) => {
+                            console.log('Debug: onSitemapProgress called:', message);
+                            logProgress(message);
+                        }
+                    };
 
-                    // Field Data
-                    html += '<h3>Field Data (Real User Metrics)</h3>';
-                    if (result.raw.loadingExperience && result.raw.loadingExperience.metrics) {
-                        Object.entries(result.raw.loadingExperience.metrics).forEach(([key, data]) => {
-                            html += '<div class="metric">' +
-                                '<span class="metric-label">' + key.replace(/_/g, ' ') + ':</span> ' +
-                                '<span class="category-' + data.category + '">' +
-                                data.percentile + 'ms (' + data.category + ')</span>' +
-                                '</div>';
-                        });
-                    } else {
-                        html += '<div class="no-data">No field data available for this URL</div>';
+                    console.log('Debug: Callbacks created:', callbacks);  // Debug
+                    const results = await PageSpeed.analyzeBatch(batchRequest, callbacks);
+                    console.log('Debug: Analysis complete');  // Debug
+
+                    // Display results
+                    const resultsDiv = document.getElementById('results');
+                    const summary = results.summary;
+                    resultsDiv.innerHTML = `
+                        <div class="results-summary">
+                            <h3>Analysis Complete</h3>
+                            <p>Total URLs processed: ${summary.totalUrls}</p>
+                            <p>Successful requests: ${summary.successfulRequests}</p>
+                            <p>Failed requests: ${summary.failedRequests}</p>
+                            <p>Average Performance Score: ${Math.round(summary.averagePerformanceScore * 100)}%</p>
+                        </div>
+                        <div class="results-details">
+                            ${results.results.map(result => {
+                                if (result.error) {
+                                    return `
+                                        <div class="result-item error">
+                                            <div class="url">${result.url}</div>
+                                            <div class="error-message">Error: ${result.error}</div>
+                                        </div>
+                                    `;
+                                }
+                                
+                                const metrics = result.response.lighthouseResult.audits;
+                                const score = result.response.lighthouseResult.categories.performance.score;
+                                
+                                return `
+                                    <div class="result-item">
+                                        <div class="url">${result.url}</div>
+                                        <div class="metrics">
+                                            <div class="metric">
+                                                <span class="metric-name">Performance Score:</span>
+                                                <span class="metric-value ${getScoreClass(score)}">${Math.round(score * 100)}%</span>
+                                            </div>
+                                            <div class="metric">
+                                                <span class="metric-name">LCP:</span>
+                                                <span class="metric-value ${getMetricClass(metrics['largest-contentful-paint'].numericValue)}">${formatTime(metrics['largest-contentful-paint'].numericValue)}</span>
+                                            </div>
+                                            <div class="metric">
+                                                <span class="metric-name">FID:</span>
+                                                <span class="metric-value ${getMetricClass(metrics['max-potential-fid'].numericValue)}">${formatTime(metrics['max-potential-fid'].numericValue)}</span>
+                                            </div>
+                                            <div class="metric">
+                                                <span class="metric-name">CLS:</span>
+                                                <span class="metric-value ${getClsClass(metrics['cumulative-layout-shift'].numericValue)}">${metrics['cumulative-layout-shift'].numericValue.toFixed(3)}</span>
+                                            </div>
+                                            <div class="metric">
+                                                <span class="metric-name">TBT:</span>
+                                                <span class="metric-value ${getMetricClass(metrics['total-blocking-time'].numericValue)}">${formatTime(metrics['total-blocking-time'].numericValue)}</span>
+                                            </div>
+                                            <div class="metric">
+                                                <span class="metric-name">Speed Index:</span>
+                                                <span class="metric-value ${getMetricClass(metrics['speed-index'].numericValue)}">${formatTime(metrics['speed-index'].numericValue)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+
+                    function formatTime(ms) {
+                        return ms >= 1000 ? `${(ms/1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
                     }
 
-                    // Lab Data
-                    html += '<h3>Lab Data (Lighthouse Results)</h3>';
-                    if (result.raw.lighthouseResult && result.raw.lighthouseResult.audits) {
-                        const labMetrics = [
-                            'first-contentful-paint',
-                            'speed-index',
-                            'largest-contentful-paint',
-                            'interactive',
-                            'total-blocking-time',
-                            'cumulative-layout-shift'
-                        ];
-
-                        labMetrics.forEach(function (metricKey) {
-                            const audit = result.raw.lighthouseResult.audits[metricKey];
-                            if (audit) {
-                                html += '<div class="metric">' +
-                                    '<span class="metric-label">' + audit.title + ':</span> ' +
-                                    '<span>' + audit.displayValue + '</span>' +
-                                    '</div>';
-                            }
-                        });
+                    function getScoreClass(score) {
+                        if (score >= 0.9) return 'good';
+                        if (score >= 0.5) return 'average';
+                        return 'poor';
                     }
 
-                    document.getElementById('results').innerHTML = html;
-                })
-                .catch(function (error) {
-                    document.getElementById('results').innerHTML =
-                        '<div class="error">' + error.message + '</div>';
-                });
+                    function getMetricClass(value) {
+                        // Thresholds based on Core Web Vitals
+                        if (value <= 2500) return 'good';  // General good threshold
+                        if (value <= 4000) return 'average';
+                        return 'poor';
+                    }
+
+                    function getClsClass(value) {
+                        if (value <= 0.1) return 'good';
+                        if (value <= 0.25) return 'average';
+                        return 'poor';
+                    }
+                } else {
+                    // ... existing single URL code ...
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                logProgress(`Error: ${error.message}`, 'error');
+            }
         });
     </script>
 </body>
