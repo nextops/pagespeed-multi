@@ -3,9 +3,35 @@ import { URLSource } from './index';
 
 export class SitemapURLSource implements URLSource {
   private static readonly DEFAULT_PATHS = [
+    // Standard names from protocol
     '/sitemap.xml',
+    '/sitemap.xml.gz',
+    '/sitemap_index.xml',
+    '/sitemap_index.xml.gz',
     '/sitemap-index.xml',
-    '/sitemap_index.xml'
+    '/sitemap-index.xml.gz',
+    
+    // Common CMS and platform variations
+    '/sitemapindex.xml',
+    '/sitemapindex.xml.gz',
+    '/sitemap/sitemap.xml',
+    '/sitemap/sitemap.xml.gz',
+    '/sitemap/index.xml',
+    '/sitemap/index.xml.gz',
+    
+    // Common content-specific sitemaps
+    '/post-sitemap.xml',
+    '/post-sitemap.xml.gz',
+    '/page-sitemap.xml',
+    '/page-sitemap.xml.gz',
+    '/category-sitemap.xml',
+    '/category-sitemap.xml.gz',
+    '/product-sitemap.xml',
+    '/product-sitemap.xml.gz',
+    
+    // Legacy and alternative formats
+    '/sitemap.php',
+    '/sitemap.txt'
   ];
 
   constructor(private readonly paths: string[] = SitemapURLSource.DEFAULT_PATHS) {}
